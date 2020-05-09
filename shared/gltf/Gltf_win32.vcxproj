@@ -38,7 +38,7 @@
     <ProjectGuid>{6A3225A3-0750-47B7-8004-80CA543F8B8B}</ProjectGuid>
     <Keyword>Win32Proj</Keyword>
     <RootNamespace>gltf_win32</RootNamespace>
-    <WindowsTargetPlatformVersion>10.0.17763.0</WindowsTargetPlatformVersion>
+    <WindowsTargetPlatformVersion>10.0</WindowsTargetPlatformVersion>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
   <PropertyGroup Condition="'$(Configuration)'=='Debug'" Label="Configuration">

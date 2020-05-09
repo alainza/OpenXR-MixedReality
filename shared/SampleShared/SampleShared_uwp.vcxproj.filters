@@ -42,6 +42,8 @@
   </ItemGroup>
   <ItemGroup>
     <None Include="packages.config" />
+    <None Include="Sample_DiffuseHDR.dds" />
+    <None Include="Sample_SpecularHDR.dds" />
   </ItemGroup>
   <ItemGroup>
     <Image Include="UWPAssets\smallTile-sdk.png">

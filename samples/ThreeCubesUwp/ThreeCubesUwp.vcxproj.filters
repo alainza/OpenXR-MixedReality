@@ -3,7 +3,7 @@
   <ItemGroup>
     <ClCompile Include="Main.cpp" />
     <ClCompile Include="pch.cpp" />
-    <ClCompile Include="Scene_HandTracking.cpp" />
+    <ClCompile Include="Scene_ThreeCubes.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="pch.h" />

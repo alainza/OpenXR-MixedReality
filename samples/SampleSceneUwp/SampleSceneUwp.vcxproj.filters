@@ -15,7 +15,6 @@
   <ItemGroup>
     <None Include="TemporaryKey.pfx" />
     <None Include="packages.config" />
-    <None Include="$(OpenXRLoaderBinaryRoot)\bin\openxr_loader.dll" />
   </ItemGroup>
   <ItemGroup>
     <Filter Include="DeploymentContent">
