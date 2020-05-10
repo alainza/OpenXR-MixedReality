@@ -53,8 +53,8 @@ namespace {
             if (sceneContext.Extensions.SupportsHandInteraction) {
                 ActionContext().SuggestInteractionProfileBindings("/interaction_profiles/microsoft/hand_interaction",
                                                                   {
-                                                                      {m_selectAction, "/user/hand/left/input/select/value"},
-                                                                      {m_selectAction, "/user/hand/right/input/select/value"},
+                                                                      {m_selectAction, "/user/hand/left/input/squeeze/value"},
+                                                                      {m_selectAction, "/user/hand/right/input/squeeze/value"},
                                                                       {m_aimPoseAction, "/user/hand/left/input/aim/pose"},
                                                                       {m_aimPoseAction, "/user/hand/right/input/aim/pose"},
                                                                   });

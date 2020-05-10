@@ -32,5 +32,13 @@
 #include <XrUtility/XrMath.h>
 #include <SampleShared/Trace.h>
 #include <SampleShared/ScopeGuard.h>
-
+#include <pbr/GltfLoader.h>
 #include <fmt/format.h>
+
+#include <winrt/base.h>
+#include <winrt/Windows.Foundation.h>
+#include <winrt/Windows.Storage.h>
+#include <winrt/Windows.Storage.Streams.h>
+#include <winrt/Windows.ApplicationModel.h>
+#include <winrt/Windows.Security.Cryptography.h>
+#include <winrt/Windows.Security.Cryptography.Core.h>

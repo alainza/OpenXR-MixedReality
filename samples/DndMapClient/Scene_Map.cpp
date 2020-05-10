@@ -24,6 +24,10 @@ using namespace std::chrono_literals;
 
 namespace {
 
+    struct __declspec(uuid("905a0fef-bc53-11df-8c49-001e4fc686da")) IBufferByteAccess : ::IUnknown
+    {
+        virtual HRESULT __stdcall Buffer(uint8_t** value) = 0;
+    };
     //
     // This sample shows different tracking behaviors across local, unbounded and anchor spaces.
     // The user can air-tap to create 3 cubes next to each other located precisely edge to edge when they are created.
@@ -98,20 +102,15 @@ namespace {
             // TLDR: a flat cube might be better
 
 
+#if 1
             XrPosef mapPose;
             mapPose.orientation = xr::math::Quaternion::RotationRollPitchYaw({ 1.57f, 0.0f, 0.0f });
-            mapPose.position = { 0.0f, .5f, 0.0f };
-            auto material = Pbr::Material::CreateFlat(m_sceneContext.PbrResources, Pbr::FromSRGB(Colors::Navy), 1, 0);
-            m_map = AddSceneObject(CreateQuad(m_sceneContext.PbrResources, { .1f, .1f }, material));
+            mapPose.position = { 0.0f, -.5f, -1.0f };
+            m_map = AddSceneObject(CreateCube(m_sceneContext.PbrResources, { .5f, .5f, .01f }, Pbr::FromSRGB(Colors::Green), 1, 0));
             m_holograms.emplace_back(m_unboundedSpace.Get(), m_map, mapPose);
+#endif
 
-            // 1 meter in front of me
-            mapPose.position = { 0.0f, .5f, -1.0f };
-            material = Pbr::Material::CreateFlat(m_sceneContext.PbrResources, Pbr::FromSRGB(Colors::Red), 1, 0);
-            m_holograms.emplace_back(m_unboundedSpace.Get(), AddSceneObject(CreateQuad(m_sceneContext.PbrResources, { .1f, .1f }, material)), mapPose);
-
-            mapPose.position = { 0.0f, 0.0f, -1.0f };
-            m_holograms.emplace_back(m_unboundedSpace.Get(), AddSceneObject(CreateCube(m_sceneContext.PbrResources, { .5f, .5f, .01f }, Pbr::FromSRGB(Colors::Green), 1, 0)), mapPose);
+            LoadRogueModelAsync();
         }
 
         void OnUpdate(const FrameTime& frameTime) override {
@@ -135,8 +134,11 @@ namespace {
 
 #endif
 
-            for (auto& hologram : m_holograms) {
-                UpdateHologramPlacement(hologram, frameTime.PredictedDisplayTime);
+            {
+                std::scoped_lock lock(m_hologramsMutex);
+                for (auto& hologram : m_holograms) {
+                    UpdateHologramPlacement(hologram, frameTime.PredictedDisplayTime);
+                }
             }
         }
 
@@ -205,6 +207,30 @@ namespace {
         }
 #endif
 
+        private:
+            winrt::Windows::Foundation::IAsyncAction LoadRogueModelAsync()
+            {
+                winrt::Windows::Foundation::Uri rogueUri(L"ms-appx:///Assets/Rogue.glb");
+                auto rogueStorage = co_await winrt::Windows::Storage::StorageFile::GetFileFromApplicationUriAsync(rogueUri);
+                auto buffer = co_await winrt::Windows::Storage::FileIO::ReadBufferAsync(rogueStorage);
+                auto modelSize = static_cast<uint32_t>(buffer.Length());
+
+                auto byteAccess = buffer.as<IBufferByteAccess>();
+                uint8_t* bytes = nullptr;
+                byteAccess->Buffer(&bytes);
+                auto model = Gltf::FromGltfBinary(m_sceneContext.PbrResources, bytes, modelSize);
+
+                m_rogue = AddSceneObject(std::make_shared<PbrModelObject>(model));
+                m_rogue->Scale() = XrVector3f{ .01f, .01f, .01f };
+                XrPosef roguePose;
+                roguePose.orientation = xr::math::Quaternion::Identity(); //xr::math::Quaternion::RotationRollPitchYaw({ 1.57f, 0.0f, 0.0f });
+                roguePose.position = { 0.0f, -.49f, -1.0f };
+                {
+                    std::scoped_lock lock(m_hologramsMutex);
+                    m_holograms.emplace_back(m_unboundedSpace.Get(), m_rogue, roguePose);
+                }
+            }
+
     private:
         XrAction m_selectAction{ XR_NULL_HANDLE };
         XrAction m_aimPoseAction{ XR_NULL_HANDLE };
@@ -227,6 +253,7 @@ namespace {
             XrSpace Space = XR_NULL_HANDLE;
             std::optional<XrPosef> Pose = {};
         };
+        std::mutex m_hologramsMutex;
         std::vector<Hologram> m_holograms;
 
         xr::SpaceHandle m_unboundedSpace;
@@ -238,7 +265,9 @@ namespace {
         };
         std::vector<AnchorSpace> m_anchorSpaces;
 
+
         std::shared_ptr<SceneObject> m_map;
+        std::shared_ptr<SceneObject> m_rogue;
     };
 } // namespace
 
