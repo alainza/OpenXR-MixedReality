@@ -22,6 +22,7 @@ using namespace xr::math;
 using namespace std::chrono;
 using namespace std::chrono_literals;
 
+
 namespace {
 
     struct __declspec(uuid("905a0fef-bc53-11df-8c49-001e4fc686da")) IBufferByteAccess : ::IUnknown
@@ -39,20 +40,21 @@ namespace {
     struct MapScene : public Scene {
         MapScene(SceneContext& sceneContext)
             : Scene(sceneContext) {
-#if 0
-            xr::ActionSet& actionSet = ActionContext().CreateActionSet("three_cubes_scene_actions", "Three Cubes Scene Actions");
+
+            xr::ActionSet& actionSet = ActionContext().CreateActionSet("move_map_actions", "Scene Move Map Actions");
 
             const std::vector<std::string> subactionPathBothHands = { "/user/hand/right", "/user/hand/left" };
 
-            m_selectAction = actionSet.CreateAction("select_action", "Select Action", XR_ACTION_TYPE_BOOLEAN_INPUT, subactionPathBothHands);
-            m_aimPoseAction = actionSet.CreateAction("aim_pose", "Aim Pose", XR_ACTION_TYPE_POSE_INPUT, subactionPathBothHands);
+            m_gripAction = actionSet.CreateAction("grip_action", "Grip Action", XR_ACTION_TYPE_BOOLEAN_INPUT, subactionPathBothHands);
+            m_gripPoseAction = actionSet.CreateAction("grip_pose", "Grip Pose", XR_ACTION_TYPE_POSE_INPUT, subactionPathBothHands);
 
-            ActionContext().SuggestInteractionProfileBindings("/interaction_profiles/khr/simple_controller",
+            // /interaction_profiles/khr/simple_controller and /user/hand/right/input/squeeze/click generate an exception as squeeze is not supported in khr
+            ActionContext().SuggestInteractionProfileBindings("/interaction_profiles/microsoft/motion_controller", //"/interaction_profiles/khr/simple_controller",
                 {
-                    {m_selectAction, "/user/hand/right/input/select/click"},
-                    {m_selectAction, "/user/hand/left/input/select/click"},
-                    {m_aimPoseAction, "/user/hand/left/input/aim/pose"},
-                    {m_aimPoseAction, "/user/hand/right/input/aim/pose"},
+                    {m_gripAction, "/user/hand/right/input/squeeze/click"},
+                    {m_gripAction, "/user/hand/left/input/squeeze/click"},
+                    {m_gripPoseAction, "/user/hand/left/input/grip/pose"},
+                    {m_gripPoseAction, "/user/hand/right/input/grip/pose"},
                 });
 
             // Use Squeeze for hands instead of Select as HL2 basically uses the same gesture for boths but adds
@@ -60,14 +62,12 @@ namespace {
             if (sceneContext.Extensions.SupportsHandInteraction) {
                 ActionContext().SuggestInteractionProfileBindings("/interaction_profiles/microsoft/hand_interaction",
                     {
-                        {m_selectAction, "/user/hand/left/input/squeeze/value"},
-                        {m_selectAction, "/user/hand/right/input/squeeze/value"},
-                        {m_aimPoseAction, "/user/hand/left/input/aim/pose"},
-                        {m_aimPoseAction, "/user/hand/right/input/aim/pose"},
+                        {m_gripAction, "/user/hand/left/input/squeeze/value"},
+                        {m_gripAction, "/user/hand/right/input/squeeze/value"},
+                        {m_gripPoseAction, "/user/hand/left/input/grip/pose"},
+                        {m_gripPoseAction, "/user/hand/right/input/grip/pose"},
                     });
             }
-
-#endif
 
             XrReferenceSpaceCreateInfo referenceSpaceCreateInfo{ XR_TYPE_REFERENCE_SPACE_CREATE_INFO };
             referenceSpaceCreateInfo.referenceSpaceType = XR_REFERENCE_SPACE_TYPE_LOCAL;
@@ -79,60 +79,59 @@ namespace {
                 CHECK_XRCMD(xrCreateReferenceSpace(m_sceneContext.Session, &referenceSpaceCreateInfo, m_unboundedSpace.Put()));
             }
 
-#if 0
-            XrActionSpaceCreateInfo spaceCreateInfo{ XR_TYPE_ACTION_SPACE_CREATE_INFO };
-            spaceCreateInfo.poseInActionSpace = Pose::Identity();
+            auto createSpaceForHand = [&](XrPath hand, DirectX::XMVECTORF32 color)
+            {
+                XrActionSpaceCreateInfo spaceCreateInfo{ XR_TYPE_ACTION_SPACE_CREATE_INFO };
+                spaceCreateInfo.poseInActionSpace = Pose::Identity();
+                spaceCreateInfo.action = m_gripPoseAction;
+                spaceCreateInfo.subactionPath = hand;
 
-            spaceCreateInfo.action = m_aimPoseAction;
-            spaceCreateInfo.poseInActionSpace = Pose::Translation({ 0, 0, -0.2f });
-            spaceCreateInfo.subactionPath = m_sceneContext.RightHand;
-            CHECK_XRCMD(xrCreateActionSpace(m_sceneContext.Session, &spaceCreateInfo, m_rightAimSpace.Put()));
-            spaceCreateInfo.subactionPath = m_sceneContext.LeftHand;
-            CHECK_XRCMD(xrCreateActionSpace(m_sceneContext.Session, &spaceCreateInfo, m_leftAimSpace.Put()));
+                xr::SpaceHandle spaceHandle;
+                CHECK_XRCMD(xrCreateActionSpace(m_sceneContext.Session, &spaceCreateInfo, spaceHandle.Put()));
 
-            m_holograms.emplace_back(m_rightAimSpace.Get(),
-                AddSceneObject(CreateSphere(m_sceneContext.PbrResources, 0.05f, 20, Pbr::FromSRGB(Colors::Magenta))));
+                // TODO: do that only if we are using controllers and not hands
+                m_holograms.emplace_back(spaceHandle.Get(), AddSceneObject(CreateSphere(m_sceneContext.PbrResources, 0.05f, 20, Pbr::FromSRGB(color))));
 
-            m_holograms.emplace_back(m_leftAimSpace.Get(),
-                AddSceneObject(CreateSphere(m_sceneContext.PbrResources, 0.05f, 20, Pbr::FromSRGB(Colors::Cyan))));
-#endif
+                m_gripSpaces[hand] = std::move(spaceHandle);
+            };
+
+            createSpaceForHand(m_sceneContext.LeftHand, Colors::Cyan);
+            createSpaceForHand(m_sceneContext.RightHand, Colors::Magenta);
 
 
             // Do not forget that quad has only one face and if you are looking at it the wrong way, it's invisible...
-            // TLDR: a flat cube might be better
+            // That's why we should always add cubes and not quads as static objects in scene, i.e.
+            // reserve quads for always HMD Facing stuff only
 
-
-#if 1
+            // Add the map
             XrPosef mapPose;
             mapPose.orientation = xr::math::Quaternion::RotationRollPitchYaw({ 1.57f, 0.0f, 0.0f });
             mapPose.position = { 0.0f, -.5f, -1.0f };
-            m_map = AddSceneObject(CreateCube(m_sceneContext.PbrResources, { .5f, .5f, .01f }, Pbr::FromSRGB(Colors::Green), 1, 0));
+            auto altMaterial = Pbr::Material::CreateFlat(m_sceneContext.PbrResources, Pbr::FromSRGB(Colors::Navy));
+            m_mapModelObject = CreateCube(m_sceneContext.PbrResources, { .5f, .5f, .01f }, Pbr::FromSRGB(Colors::Green), 1, 0);
+            m_mapModelObject->GetModel()->GetPrimitive(0).SetAltMaterial(altMaterial);
+            m_map = AddSceneObject(m_mapModelObject);
             m_holograms.emplace_back(m_unboundedSpace.Get(), m_map, mapPose);
-#endif
 
+            // Load and place Rogue
             LoadRogueModelAsync();
         }
 
         void OnUpdate(const FrameTime& frameTime) override {
 
-#if 0
-            XrActionStateBoolean selectState{ XR_TYPE_ACTION_STATE_BOOLEAN };
-            XrActionStateGetInfo getInfo{ XR_TYPE_ACTION_STATE_GET_INFO };
-            getInfo.action = m_selectAction;
+            for (auto& [hand, space] : m_gripSpaces)
+            {
+                XrActionStateBoolean gripState{ XR_TYPE_ACTION_STATE_BOOLEAN };
+                XrActionStateGetInfo getInfo{ XR_TYPE_ACTION_STATE_GET_INFO };
+                getInfo.action = m_gripAction;
 
-            getInfo.subactionPath = m_sceneContext.RightHand;
-            CHECK_XRCMD(xrGetActionStateBoolean(m_sceneContext.Session, &getInfo, &selectState));
-            if (selectState.isActive && selectState.changedSinceLastSync && selectState.currentState) {
-                PlaceThreeCubes(m_rightAimSpace.Get(), selectState.lastChangeTime);
+                getInfo.subactionPath = hand;
+                CHECK_XRCMD(xrGetActionStateBoolean(m_sceneContext.Session, &getInfo, &gripState));
+                m_mapModelObject->GetModel()->GetPrimitive(0).UseAltMaterial(gripState.isActive && gripState.currentState);
+                //if (gripState.isActive && gripState.changedSinceLastSync && gripState.currentState) {
+                //    PlaceCube(space.Get(), selectState.lastChangeTime);
+                //}
             }
-
-            getInfo.subactionPath = m_sceneContext.LeftHand;
-            CHECK_XRCMD(xrGetActionStateBoolean(m_sceneContext.Session, &getInfo, &selectState));
-            if (selectState.isActive && selectState.changedSinceLastSync && selectState.currentState) {
-                PlaceThreeCubes(m_leftAimSpace.Get(), selectState.lastChangeTime);
-            }
-
-#endif
 
             {
                 std::scoped_lock lock(m_hologramsMutex);
@@ -140,6 +139,29 @@ namespace {
                     UpdateHologramPlacement(hologram, frameTime.PredictedDisplayTime);
                 }
             }
+        }
+
+    private:
+        void PlaceCube(XrSpace space, XrTime time) {
+            constexpr float cubeSize = 0.05f;
+            constexpr XMFLOAT3 sideLength = { cubeSize, cubeSize, cubeSize };
+
+            auto createHologram = [&](XrSpace baseSpace, const Pbr::RGBAColor& color, const XrVector3f& offset) {
+                if (baseSpace == XR_NULL_HANDLE) {
+                    return; // If extension is not supported, skip creating a hologram
+                }
+
+                XrSpaceLocation spaceLocation{ XR_TYPE_SPACE_LOCATION };
+                CHECK_XRCMD(xrLocateSpace(space, baseSpace, time, &spaceLocation));
+
+                Hologram hologram;
+                hologram.Object = AddSceneObject(CreateCube(m_sceneContext.PbrResources, sideLength, color));
+                hologram.Space = baseSpace;
+                hologram.Pose = Pose::Multiply(Pose::Translation(offset), spaceLocation.pose);
+                m_holograms.emplace_back(std::move(hologram));
+            };
+
+            createHologram(m_unboundedSpace.Get(), Pbr::FromSRGB(Colors::Green), { 0, 0, 0 });
         }
 
     private:
@@ -232,11 +254,14 @@ namespace {
             }
 
     private:
-        XrAction m_selectAction{ XR_NULL_HANDLE };
-        XrAction m_aimPoseAction{ XR_NULL_HANDLE };
+        XrAction m_gripAction{ XR_NULL_HANDLE };
+        XrAction m_gripPoseAction{ XR_NULL_HANDLE };
 
-        xr::SpaceHandle m_rightAimSpace;
-        xr::SpaceHandle m_leftAimSpace;
+        // These spaces are created wit xrCreateActionSpace() and therefore associated to actions
+        // These actions are based on "pose" paths such as /user/hand/left/input/grip/pose
+        std::unordered_map<XrPath, xr::SpaceHandle> m_gripSpaces;
+        //xr::SpaceHandle m_rightGripSpace;
+        //xr::SpaceHandle m_leftGripSpace;
 
         struct Hologram {
             Hologram() = default;
@@ -265,7 +290,7 @@ namespace {
         };
         std::vector<AnchorSpace> m_anchorSpaces;
 
-
+        std::shared_ptr<PbrModelObject> m_mapModelObject;
         std::shared_ptr<SceneObject> m_map;
         std::shared_ptr<SceneObject> m_rogue;
     };
