@@ -20,7 +20,6 @@
   </ItemGroup>
   <ItemGroup>
     <None Include="packages.config" />
-    <None Include="$(OpenXRLoaderBinaryRoot)\bin\openxr_loader.dll" />
     <None Include="TemporaryKey.pfx">
       <Filter>Framework</Filter>
     </None>

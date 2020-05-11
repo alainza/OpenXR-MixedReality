@@ -28,18 +28,20 @@ namespace Pbr {
 
         // Get the material for the primitive.
         std::shared_ptr<Material>& GetMaterial() {
-            return m_useAltMaterial ? m_altMaterial: m_material;
+            return m_altMaterial ? m_altMaterial: m_material;
         }
         const std::shared_ptr<Material>& GetMaterial() const {
-            return m_useAltMaterial ? m_altMaterial : m_material;
+            return m_altMaterial ? m_altMaterial : m_material;
         }
 
         void SetAltMaterial(std::shared_ptr<Material>& altMaterial)
         {
             m_altMaterial = altMaterial;
         }
-        bool UseAltMaterial() const { return m_useAltMaterial; }
-        void UseAltMaterial(bool newValue) { m_useAltMaterial = newValue; }
+        void ResetAltMaterial()
+        {
+            m_altMaterial.reset();
+        }
 
     protected:
         friend struct Model;
@@ -52,6 +54,5 @@ namespace Pbr {
         winrt::com_ptr<ID3D11Buffer> m_vertexBuffer;
         std::shared_ptr<Material> m_material;
         std::shared_ptr<Material> m_altMaterial;
-        bool m_useAltMaterial = false;
     };
 } // namespace Pbr

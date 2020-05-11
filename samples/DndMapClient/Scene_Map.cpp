@@ -79,6 +79,10 @@ namespace {
                 CHECK_XRCMD(xrCreateReferenceSpace(m_sceneContext.Session, &referenceSpaceCreateInfo, m_unboundedSpace.Put()));
             }
 
+            referenceSpaceCreateInfo.referenceSpaceType = XR_REFERENCE_SPACE_TYPE_VIEW;
+            referenceSpaceCreateInfo.poseInReferenceSpace = Pose::Identity();
+            CHECK_XRCMD(xrCreateReferenceSpace(m_sceneContext.Session, &referenceSpaceCreateInfo, m_viewSpace.Put()));
+
             auto createSpaceForHand = [&](XrPath hand, DirectX::XMVECTORF32 color)
             {
                 XrActionSpaceCreateInfo spaceCreateInfo{ XR_TYPE_ACTION_SPACE_CREATE_INFO };
@@ -106,18 +110,46 @@ namespace {
             // Add the map
             XrPosef mapPose;
             mapPose.orientation = xr::math::Quaternion::RotationRollPitchYaw({ 1.57f, 0.0f, 0.0f });
-            mapPose.position = { 0.0f, -.5f, -1.0f };
-            auto altMaterial = Pbr::Material::CreateFlat(m_sceneContext.PbrResources, Pbr::FromSRGB(Colors::Navy));
-            m_mapModelObject = CreateCube(m_sceneContext.PbrResources, { .5f, .5f, .01f }, Pbr::FromSRGB(Colors::Green), 1, 0);
-            m_mapModelObject->GetModel()->GetPrimitive(0).SetAltMaterial(altMaterial);
-            m_map = AddSceneObject(m_mapModelObject);
-            m_holograms.emplace_back(m_unboundedSpace.Get(), m_map, mapPose);
+            mapPose.position = { 0.0f, 0.0f, 0.0f };//  { 0.0f, -.5f, -1.0f };
+            m_highlightMaterial = Pbr::Material::CreateFlat(m_sceneContext.PbrResources, Pbr::FromSRGB(Colors::Red));
+            m_map = AddSceneObject(CreateCube(m_sceneContext.PbrResources, { .5f, .5f, .01f }, Pbr::FromSRGB(Colors::Green), 1, 0));
+            m_holograms.emplace_back(m_unboundedSpace.Get(), m_map, mapPose).EnableCollisions = true;;
 
             // Load and place Rogue
             LoadRogueModelAsync();
         }
 
         void OnUpdate(const FrameTime& frameTime) override {
+
+            if (m_requiresMapPlacement || m_requiresRoguePlacement)
+            {
+                // Let's try to find the position of map
+                // based on user's looking direction
+                XrSpaceLocation spaceLocation{ XR_TYPE_SPACE_LOCATION };
+                if (XR_SUCCESS == xrLocateSpace(m_viewSpace.Get(), m_unboundedSpace.Get(), frameTime.PredictedDisplayTime, &spaceLocation))
+                {
+                    auto viewToUnbounded = LoadXrPose(spaceLocation.pose);
+                    auto newPosition = XMVector3TransformCoord(XMVectorSet(0.0f, -.3f, -.8f, 1.0f), viewToUnbounded);
+                    for (auto& hologram : m_holograms)
+                    {
+                        if (m_requiresMapPlacement && (hologram.Object == m_map))
+                        {
+                            XrPosef newPose = hologram.Pose.value();
+                            StoreXrVector3(&newPose.position, newPosition);
+                            hologram.Pose = newPose;
+                            m_requiresMapPlacement = false;
+                        }
+                        else if (m_requiresRoguePlacement && (hologram.Object == m_rogue))
+                        {
+                            XrPosef newPose = hologram.Pose.value();
+                            StoreXrVector3(&newPose.position, newPosition);
+                            hologram.Pose = newPose;
+                            m_requiresRoguePlacement = false;
+                        }
+
+                    }
+                }
+            }
 
             for (auto& [hand, space] : m_gripSpaces)
             {
@@ -127,15 +159,65 @@ namespace {
 
                 getInfo.subactionPath = hand;
                 CHECK_XRCMD(xrGetActionStateBoolean(m_sceneContext.Session, &getInfo, &gripState));
-                m_mapModelObject->GetModel()->GetPrimitive(0).UseAltMaterial(gripState.isActive && gripState.currentState);
-                //if (gripState.isActive && gripState.changedSinceLastSync && gripState.currentState) {
-                //    PlaceCube(space.Get(), selectState.lastChangeTime);
-                //}
+
+                // m_mapModelObject->GetModel()->GetPrimitive(0).UseAltMaterial(gripState.isActive && gripState.currentState);
+
+                if (gripState.isActive && gripState.changedSinceLastSync && gripState.currentState)
+                
+                if (m_sceneContext.RightHand == hand)
+                {
+                    m_requiresMapPlacement = true;
+                }
+                else
+                {
+                    m_requiresRoguePlacement = true;
+                }
+
+                {
+                    std::scoped_lock lock(m_hologramsMutex);
+                    for (auto& hologram : m_holograms)
+                    {
+                        if (hologram.EnableCollisions)
+                        {
+                            // Try to compute the distance between map and controller / hand
+                            // HL: (1) hl.Space + pose?
+                            // Controller: space local variable
+                            XrSpaceLocation spaceLocation{ XR_TYPE_SPACE_LOCATION };
+                            bool collision = false;
+                            if (XR_SUCCESS == xrLocateSpace(space.Get(), hologram.Space, frameTime.PredictedDisplayTime, &spaceLocation))
+                            {
+                                auto controllerToHLSpace = LoadXrPose(spaceLocation.pose);
+                                auto hlToHLSpace = hologram.Pose.has_value() ? LoadXrPose(hologram.Pose.value()) : XMMatrixIdentity();
+                                auto controllerToHL = controllerToHLSpace * XMMatrixInverse(nullptr, hlToHLSpace);
+                                auto length = XMVectorGetX(XMVector3Length(XMVector3TransformCoord(XMVectorSet(0.0f, 0.0f, 0.0f, 1.0f), controllerToHL)));
+                                collision = (length < .05f);
+
+                                wchar_t debug[512];
+                                swprintf_s(debug, L"Distance: %.4f\n", length);
+                                OutputDebugString(debug);
+                            }
+
+                            hologram.IsHighlighted = collision;
+                        }
+                    }
+                }
             }
 
             {
                 std::scoped_lock lock(m_hologramsMutex);
                 for (auto& hologram : m_holograms) {
+                    auto& primitive = hologram.Object->GetModel()->GetPrimitive(0);
+
+                    if (hologram.IsHighlighted)
+                    {
+                        primitive.SetAltMaterial(m_highlightMaterial);
+                    }
+                    else
+                    {
+                        primitive.ResetAltMaterial();
+                    }
+                    hologram.IsHighlighted = false;
+
                     UpdateHologramPlacement(hologram, frameTime.PredictedDisplayTime);
                 }
             }
@@ -249,7 +331,7 @@ namespace {
                 roguePose.position = { 0.0f, -.49f, -1.0f };
                 {
                     std::scoped_lock lock(m_hologramsMutex);
-                    m_holograms.emplace_back(m_unboundedSpace.Get(), m_rogue, roguePose);
+                    m_holograms.emplace_back(m_unboundedSpace.Get(), m_rogue, roguePose).EnableCollisions = true;
                 }
             }
 
@@ -268,21 +350,25 @@ namespace {
             Hologram(Hologram&) = delete;
             Hologram(Hologram&&) = default;
 
-            Hologram(XrSpace space, std::shared_ptr<SceneObject> object, std::optional<XrPosef> pose = {})
+            Hologram(XrSpace space, std::shared_ptr<PbrModelObject> object, std::optional<XrPosef> pose = {}, bool enableCollisions = false)
                 : Object(std::move(object))
                 , Space(space)
-                , Pose(pose) {
+                , Pose(pose)
+                , EnableCollisions(enableCollisions) {
             }
 
-            std::shared_ptr<SceneObject> Object;
+            std::shared_ptr<PbrModelObject> Object;
             XrSpace Space = XR_NULL_HANDLE;
             std::optional<XrPosef> Pose = {};
+            bool EnableCollisions = false;
+            bool IsHighlighted = false;
         };
         std::mutex m_hologramsMutex;
         std::vector<Hologram> m_holograms;
 
         xr::SpaceHandle m_unboundedSpace;
         xr::SpaceHandle m_localSpace;
+        xr::SpaceHandle m_viewSpace;
 
         struct AnchorSpace {
             xr::SpatialAnchorHandle Anchor;
@@ -290,9 +376,12 @@ namespace {
         };
         std::vector<AnchorSpace> m_anchorSpaces;
 
-        std::shared_ptr<PbrModelObject> m_mapModelObject;
-        std::shared_ptr<SceneObject> m_map;
-        std::shared_ptr<SceneObject> m_rogue;
+        bool m_requiresMapPlacement = true;
+        std::shared_ptr<PbrModelObject> m_map;
+        bool m_requiresRoguePlacement = false;
+        std::shared_ptr<PbrModelObject> m_rogue;
+
+        std::shared_ptr<Pbr::Material> m_highlightMaterial;
     };
 } // namespace
 
