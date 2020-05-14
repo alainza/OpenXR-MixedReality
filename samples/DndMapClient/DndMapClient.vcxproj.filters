@@ -29,6 +29,8 @@
     <None Include="Assets\Rogue.glb">
       <Filter>Assets</Filter>
     </None>
+    <None Include="$(OpenXRLoaderBinaryRoot)\bin\openxr_loader.dll" />
+    <None Include="WinXR.json" />
   </ItemGroup>
   <ItemGroup>
     <Image Include="Assets\SplashScreen.scale-200.png">

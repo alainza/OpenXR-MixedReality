@@ -375,8 +375,7 @@ namespace {
         private:
             winrt::Windows::Foundation::IAsyncAction LoadRogueModelAsync()
             {
-                winrt::Windows::Foundation::Uri rogueUri(L"ms-appx:///Assets/Rogue.glb");
-                auto rogueStorage = co_await winrt::Windows::Storage::StorageFile::GetFileFromApplicationUriAsync(rogueUri);
+                auto rogueStorage = co_await winrt::Windows::Storage::StorageFile::GetFileFromPathAsync(L"C:\\WinXR\\Rogue.glb");
                 auto buffer = co_await winrt::Windows::Storage::FileIO::ReadBufferAsync(rogueStorage);
                 auto modelSize = static_cast<uint32_t>(buffer.Length());
 
