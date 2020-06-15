@@ -21,7 +21,7 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance
             XR_MSFT_HAND_INTERACTION_EXTENSION_NAME,
         };
 
-        auto app = CreateXrApp({ "DndMapClient", 1 }, requiredExtensions);
+        auto app = CreateXrApp({ "HpControllerTestClient", 1 }, requiredExtensions);
         app->AddScene(TryCreateTitleScene(app->SceneContext()));
         app->AddScene(TryCreateMapScene(app->SceneContext()));
         app->Run();

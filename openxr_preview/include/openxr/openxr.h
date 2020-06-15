@@ -2080,6 +2080,10 @@ typedef struct XrViewConfigurationViewFovEPIC {
     XrFovf                      maxMutableFov;
 } XrViewConfigurationViewFovEPIC;
 
+#define XR_MSFT_prototype_krypton_controller 1
+#define XR_MSFT_prototype_krypton_controller_SPEC_VERSION 1
+#define XR_MSFT_PROTOTYPE_KRYPTON_CONTROLLER_EXTENSION_NAME "XR_MSFT_prototype_krypton_controller"
+
 
 #ifdef __cplusplus
 }

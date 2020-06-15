@@ -26,6 +26,7 @@ int APIENTRY wWinMain(_In_ HINSTANCE, _In_opt_ HINSTANCE, _In_ LPWSTR, _In_ int)
 
         const std::vector<const char*> requiredExtensions = {
             XR_MSFT_SPATIAL_ANCHOR_EXTENSION_NAME,
+            XR_MSFT_PROTOTYPE_KRYPTON_CONTROLLER_EXTENSION_NAME,
             XR_MSFT_HAND_INTERACTION_EXTENSION_NAME
         };
 

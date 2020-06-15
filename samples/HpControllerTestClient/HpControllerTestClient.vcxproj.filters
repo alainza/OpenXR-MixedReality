@@ -23,7 +23,7 @@
     <None Include="TemporaryKey.pfx">
       <Filter>Framework</Filter>
     </None>
-    <None Include="DndMapClient_TemporaryKey.pfx">
+    <None Include="HpControllerTestClient_TemporaryKey.pfx">
       <Filter>Framework</Filter>
     </None>
     <None Include="Assets\Rogue.glb">
