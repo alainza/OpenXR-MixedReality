@@ -110,9 +110,29 @@
     </ProjectReference>
   </ItemGroup>
   <ItemGroup>
-    <None Include="A.glb" />
+    <None Include="A.glb">
+      <DeploymentContent>true</DeploymentContent>
+    </None>
+    <None Include="B.glb">
+      <DeploymentContent>true</DeploymentContent>
+    </None>
+    <None Include="Grasp.glb">
+      <DeploymentContent>true</DeploymentContent>
+    </None>
+    <None Include="Menu.glb">
+      <DeploymentContent>true</DeploymentContent>
+    </None>
     <None Include="packages.config" />
     <None Include="Rogue.glb">
+      <DeploymentContent>true</DeploymentContent>
+    </None>
+    <None Include="Select.glb">
+      <DeploymentContent>true</DeploymentContent>
+    </None>
+    <None Include="X.glb">
+      <DeploymentContent>true</DeploymentContent>
+    </None>
+    <None Include="Y.glb">
       <DeploymentContent>true</DeploymentContent>
     </None>
   </ItemGroup>

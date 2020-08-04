@@ -20,17 +20,15 @@
   </ItemGroup>
   <ItemGroup>
     <None Include="packages.config" />
-    <None Include="TemporaryKey.pfx">
-      <Filter>Framework</Filter>
-    </None>
-    <None Include="HpControllerTestClient_TemporaryKey.pfx">
-      <Filter>Framework</Filter>
-    </None>
-    <None Include="Assets\Rogue.glb">
-      <Filter>Assets</Filter>
-    </None>
     <None Include="$(OpenXRLoaderBinaryRoot)\bin\openxr_loader.dll" />
-    <None Include="WinXR.json" />
+    <None Include="HpControllerTestClientUwp_TemporaryKey.pfx" />
+    <None Include="Assets\A.glb" />
+    <None Include="Assets\B.glb" />
+    <None Include="Assets\Grasp.glb" />
+    <None Include="Assets\Menu.glb" />
+    <None Include="Assets\Select.glb" />
+    <None Include="Assets\X.glb" />
+    <None Include="Assets\Y.glb" />
   </ItemGroup>
   <ItemGroup>
     <Image Include="Assets\SplashScreen.scale-200.png">

@@ -274,9 +274,10 @@ namespace {
         }
 
         private:
-            winrt::Windows::Foundation::IAsyncAction LoadLetterAsync(const wchar_t* filename, int32_t* leftIdx, int32_t* rightIdx, float dx)
+            winrt::Windows::Foundation::IAsyncAction LoadLetterAsync(const wchar_t* path, int32_t* leftIdx, int32_t* rightIdx, float dx)
             {
-                auto storage = co_await winrt::Windows::Storage::StorageFile::GetFileFromPathAsync(filename);
+                winrt::Windows::Foundation::Uri uri(path);
+                auto storage = co_await winrt::Windows::Storage::StorageFile::GetFileFromApplicationUriAsync(uri);
                 auto buffer = co_await winrt::Windows::Storage::FileIO::ReadBufferAsync(storage);
                 auto modelSize = static_cast<uint32_t>(buffer.Length());
 
@@ -309,13 +310,13 @@ namespace {
 
             winrt::Windows::Foundation::IAsyncAction LoadLettersAsync()
             {
-                co_await LoadLetterAsync(L"C:\\WinXR\\select.glb", &m_leftSelectIndex, &m_rightSelectIndex, -.6f);
-                co_await LoadLetterAsync(L"C:\\WinXR\\grasp.glb", &m_leftGripIndex, &m_rightGripIndex, -.3f);
-                co_await LoadLetterAsync(L"C:\\WinXR\\menu.glb", &m_leftMenuIndex, &m_rightMenuIndex, 0.0f);
-                co_await LoadLetterAsync(L"C:\\WinXR\\a.glb", nullptr, &m_rightAIndex, .3f);
-                co_await LoadLetterAsync(L"C:\\WinXR\\b.glb", nullptr, &m_rightBIndex, .45f);
-                co_await LoadLetterAsync(L"C:\\WinXR\\x.glb", &m_leftXIndex, nullptr, .3f);
-                co_await LoadLetterAsync(L"C:\\WinXR\\y.glb", &m_leftYIndex, nullptr, .45f);
+                co_await LoadLetterAsync(L"ms-appx:///Assets/select.glb", &m_leftSelectIndex, &m_rightSelectIndex, -.6f);
+                co_await LoadLetterAsync(L"ms-appx:///Assets/grasp.glb", &m_leftGripIndex, &m_rightGripIndex, -.3f);
+                co_await LoadLetterAsync(L"ms-appx:///Assets/menu.glb", &m_leftMenuIndex, &m_rightMenuIndex, 0.0f);
+                co_await LoadLetterAsync(L"ms-appx:///Assets/a.glb", nullptr, &m_rightAIndex, .3f);
+                co_await LoadLetterAsync(L"ms-appx:///Assets/b.glb", nullptr, &m_rightBIndex, .45f);
+                co_await LoadLetterAsync(L"ms-appx:///Assets/x.glb", &m_leftXIndex, nullptr, .3f);
+                co_await LoadLetterAsync(L"ms-appx:///Assets/y.glb", &m_leftYIndex, nullptr, .45f);
             }
 
     private:

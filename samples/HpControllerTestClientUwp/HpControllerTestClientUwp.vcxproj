@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="utf-8"?>
+﻿<?xml version="1.0" encoding="utf-8"?>
 <Project DefaultTargets="Build" ToolsVersion="15.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <Import Project="..\..\packages\OpenXR.Loader.1.0.6.2\build\native\OpenXR.Loader.props" Condition="Exists('..\..\packages\OpenXR.Loader.1.0.6.2\build\native\OpenXR.Loader.props')" />
   <ItemGroup Label="ProjectConfigurations">
@@ -81,7 +81,7 @@
     <!-- Enable generating msix package in local build -->
     <GenerateAppxPackageOnBuild>true</GenerateAppxPackageOnBuild>
     <PackageCertificateThumbprint>454616D37A50F5C929B39019E99E736F629D7030</PackageCertificateThumbprint>
-    <PackageCertificateKeyFile>HpControllerTestClient_TemporaryKey.pfx</PackageCertificateKeyFile>
+    <PackageCertificateKeyFile>HpControllerTestClientUwp_TemporaryKey.pfx</PackageCertificateKeyFile>
   </PropertyGroup>
   <ItemDefinitionGroup>
     <ClCompile>
@@ -145,14 +145,28 @@
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
-    <None Include="Assets\Rogue.glb">
+    <None Include="Assets\A.glb">
       <DeploymentContent>true</DeploymentContent>
     </None>
-    <None Include="HpControllerTestClient_TemporaryKey.pfx" />
-    <None Include="TemporaryKey.pfx" />
-    <None Include="WinXR.json">
+    <None Include="Assets\B.glb">
       <DeploymentContent>true</DeploymentContent>
     </None>
+    <None Include="Assets\Grasp.glb">
+      <DeploymentContent>true</DeploymentContent>
+    </None>
+    <None Include="Assets\Menu.glb">
+      <DeploymentContent>true</DeploymentContent>
+    </None>
+    <None Include="Assets\Select.glb">
+      <DeploymentContent>true</DeploymentContent>
+    </None>
+    <None Include="Assets\X.glb">
+      <DeploymentContent>true</DeploymentContent>
+    </None>
+    <None Include="Assets\Y.glb">
+      <DeploymentContent>true</DeploymentContent>
+    </None>
+    <None Include="HpControllerTestClientUwp_TemporaryKey.pfx" />
   </ItemGroup>
   <ItemGroup>
     <None Include="packages.config" />

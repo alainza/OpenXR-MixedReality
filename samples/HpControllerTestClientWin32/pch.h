@@ -57,3 +57,8 @@
 #include <winrt/Windows.ApplicationModel.h>
 #include <winrt/Windows.Security.Cryptography.h>
 #include <winrt/Windows.Security.Cryptography.Core.h>
+
+// Verify that app is working without change
+#define ENABLE_HP_CONTROLLER 0
+#define ENABLE_OCULUS_CONTROLLER 1
+#define ENABLE_WMR_CONTROLLER 0
