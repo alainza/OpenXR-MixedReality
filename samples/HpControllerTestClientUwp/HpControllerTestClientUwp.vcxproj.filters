@@ -29,6 +29,7 @@
     <None Include="Assets\Select.glb" />
     <None Include="Assets\X.glb" />
     <None Include="Assets\Y.glb" />
+    <None Include="Assets\Thumbstick.glb" />
   </ItemGroup>
   <ItemGroup>
     <Image Include="Assets\SplashScreen.scale-200.png">

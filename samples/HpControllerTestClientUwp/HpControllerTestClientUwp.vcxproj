@@ -160,6 +160,9 @@
     <None Include="Assets\Select.glb">
       <DeploymentContent>true</DeploymentContent>
     </None>
+    <None Include="Assets\Thumbstick.glb">
+      <DeploymentContent>true</DeploymentContent>
+    </None>
     <None Include="Assets\X.glb">
       <DeploymentContent>true</DeploymentContent>
     </None>

@@ -44,6 +44,8 @@ namespace {
             m_gripPoseAction = actionSet.CreateAction("grip_pose", "Grip Pose", XR_ACTION_TYPE_POSE_INPUT, subactionPathBothHands);
             m_menuAction = actionSet.CreateAction("menu_action", "menu Action", XR_ACTION_TYPE_BOOLEAN_INPUT, subactionPathBothHands);
             m_selectAction = actionSet.CreateAction("select_action", "select Action", XR_ACTION_TYPE_FLOAT_INPUT, subactionPathBothHands);
+            m_thumbstickAction = actionSet.CreateAction("thumbstick_action", "thumbstick Action", XR_ACTION_TYPE_VECTOR2F_INPUT, subactionPathBothHands);
+            m_thumbstickButtonAction = actionSet.CreateAction("thumbstick_button_action", "Thumbstick Button Action", XR_ACTION_TYPE_BOOLEAN_INPUT, subactionPathBothHands);
 
 #if (ENABLE_WMR_CONTROLLER)
             // https://www.khronos.org/registry/OpenXR/specs/1.0/html/xrspec.html#_microsoft_mixed_reality_motion_controller_profile
@@ -53,11 +55,13 @@ namespace {
                     {m_gripPoseAction, "/user/hand/right/input/grip/pose"},
                     {m_menuAction, "/user/hand/right/input/menu/click"},
                     {m_selectAction, "/user/hand/right/input/trigger/value"},
+                    {m_thumbstickAction, "/user/hand/right/input/thumbstick"},
 
                     {m_gripButtonAction, "/user/hand/left/input/squeeze/click"},
                     {m_gripPoseAction, "/user/hand/left/input/grip/pose"},
                     {m_menuAction, "/user/hand/left/input/menu/click"},
-                    {m_selectAction, "/user/hand/right/input/trigger/value"},
+                    {m_selectAction, "/user/hand/left/input/trigger/value"},
+                    {m_thumbstickAction, "/user/hand/left/input/thumbstick"},
                 });
 #endif
 
@@ -78,6 +82,8 @@ namespace {
                     {m_bAction, "/user/hand/right/input/b/click"},
                     {m_menuAction, "/user/hand/right/input/menu/click"},
                     {m_selectAction, "/user/hand/right/input/trigger/value"},
+                    {m_thumbstickAction, "/user/hand/right/input/thumbstick"},
+                    {m_thumbstickButtonAction, "/user/hand/right/input/thumbstick/click"},
 
                     {m_gripAction, "/user/hand/left/input/squeeze/value"},
                     {m_gripPoseAction, "/user/hand/left/input/grip/pose"},
@@ -85,6 +91,8 @@ namespace {
                     {m_yAction, "/user/hand/left/input/y/click"},
                     {m_menuAction, "/user/hand/left/input/menu/click"},
                     {m_selectAction, "/user/hand/left/input/trigger/value"},
+                    {m_thumbstickAction, "/user/hand/left/input/thumbstick"},
+                    {m_thumbstickButtonAction, "/user/hand/left/input/thumbstick/click"},
                 });
 #endif
 #if (ENABLE_OCULUS_CONTROLLER)
@@ -95,12 +103,14 @@ namespace {
                     {m_aAction, "/user/hand/right/input/a/click"},
                     {m_bAction, "/user/hand/right/input/b/click"},
                     {m_selectAction, "/user/hand/right/input/trigger/value"},
+                    {m_thumbstickAction, "/user/hand/right/input/thumbstick"},
 
                     {m_gripAction, "/user/hand/left/input/squeeze/value"},
                     {m_gripPoseAction, "/user/hand/left/input/grip/pose"},
                     {m_xAction, "/user/hand/left/input/x/click"},
                     {m_yAction, "/user/hand/left/input/y/click"},
                     {m_selectAction, "/user/hand/left/input/trigger/value"},
+                    {m_thumbstickAction, "/user/hand/left/input/thumbstick"},
                 });
 #endif
 
@@ -193,6 +203,28 @@ namespace {
             scaleHologram(m_gripAction, m_sceneContext.LeftHand, m_leftGripIndex);
             scaleHologram(m_gripAction, m_sceneContext.RightHand, m_rightGripIndex);
 
+            auto scale2DHologram = [&](XrAction action, XrPath hand, int32_t idx)
+            {
+                if (idx != -1)
+                {
+                    XrActionStateVector2f state{ XR_TYPE_ACTION_STATE_VECTOR2F };
+                    XrActionStateGetInfo getInfo{ XR_TYPE_ACTION_STATE_GET_INFO };
+
+                    getInfo.action = action;
+                    getInfo.subactionPath = hand;
+                    CHECK_XRCMD(xrGetActionStateVector2f(m_sceneContext.Session, &getInfo, &state));
+                    if (state.isActive)
+                    {
+                        auto sceneObject = m_holograms[idx].Object;
+                        float newScaleX = fontScale * (1.0f - state.currentState.x * .9f);
+                        float newScaleY = fontScale * (1.0f - state.currentState.y * .9f);
+                        sceneObject->Scale() = XrVector3f{ newScaleX, newScaleY, fontScale };
+                    }
+                }
+            };
+            scale2DHologram(m_thumbstickAction, m_sceneContext.LeftHand, m_leftThumbstickIndex);
+            scale2DHologram(m_thumbstickAction, m_sceneContext.RightHand, m_rightThumbstickIndex);
+
             auto highlightIfPressed = [&](XrAction action, XrPath hand, int32_t idx)
             {
                 if (idx != -1)
@@ -210,10 +242,12 @@ namespace {
             };
 
             highlightIfPressed(m_gripButtonAction, m_sceneContext.LeftHand, m_leftGripIndex);
+            highlightIfPressed(m_thumbstickButtonAction, m_sceneContext.LeftHand, m_leftThumbstickIndex);
             highlightIfPressed(m_menuAction, m_sceneContext.LeftHand, m_leftMenuIndex);
             highlightIfPressed(m_xAction, m_sceneContext.LeftHand, m_leftXIndex);
             highlightIfPressed(m_yAction, m_sceneContext.LeftHand, m_leftYIndex);
             highlightIfPressed(m_gripButtonAction, m_sceneContext.RightHand, m_rightGripIndex);
+            highlightIfPressed(m_thumbstickButtonAction, m_sceneContext.RightHand, m_rightThumbstickIndex);
             highlightIfPressed(m_menuAction, m_sceneContext.RightHand, m_rightMenuIndex);
             highlightIfPressed(m_aAction, m_sceneContext.RightHand, m_rightAIndex);
             highlightIfPressed(m_bAction, m_sceneContext.RightHand, m_rightBIndex);
@@ -310,13 +344,14 @@ namespace {
 
             winrt::Windows::Foundation::IAsyncAction LoadLettersAsync()
             {
-                co_await LoadLetterAsync(L"ms-appx:///Assets/select.glb", &m_leftSelectIndex, &m_rightSelectIndex, -.6f);
-                co_await LoadLetterAsync(L"ms-appx:///Assets/grasp.glb", &m_leftGripIndex, &m_rightGripIndex, -.3f);
-                co_await LoadLetterAsync(L"ms-appx:///Assets/menu.glb", &m_leftMenuIndex, &m_rightMenuIndex, 0.0f);
-                co_await LoadLetterAsync(L"ms-appx:///Assets/a.glb", nullptr, &m_rightAIndex, .3f);
-                co_await LoadLetterAsync(L"ms-appx:///Assets/b.glb", nullptr, &m_rightBIndex, .45f);
-                co_await LoadLetterAsync(L"ms-appx:///Assets/x.glb", &m_leftXIndex, nullptr, .3f);
-                co_await LoadLetterAsync(L"ms-appx:///Assets/y.glb", &m_leftYIndex, nullptr, .45f);
+                co_await LoadLetterAsync(L"ms-appx:///Assets/select.glb", &m_leftSelectIndex, &m_rightSelectIndex, -.65f);
+                co_await LoadLetterAsync(L"ms-appx:///Assets/grasp.glb", &m_leftGripIndex, &m_rightGripIndex, -.35f);
+                co_await LoadLetterAsync(L"ms-appx:///Assets/menu.glb", &m_leftMenuIndex, &m_rightMenuIndex, -0.05f);
+                co_await LoadLetterAsync(L"ms-appx:///Assets/thumbstick.glb", &m_leftThumbstickIndex, &m_rightThumbstickIndex, .55f);
+                co_await LoadLetterAsync(L"ms-appx:///Assets/a.glb", nullptr, &m_rightAIndex, .25f);
+                co_await LoadLetterAsync(L"ms-appx:///Assets/b.glb", nullptr, &m_rightBIndex, .4f);
+                co_await LoadLetterAsync(L"ms-appx:///Assets/x.glb", &m_leftXIndex, nullptr, .25f);
+                co_await LoadLetterAsync(L"ms-appx:///Assets/y.glb", &m_leftYIndex, nullptr, .4f);
             }
 
     private:
@@ -326,6 +361,8 @@ namespace {
         XrAction m_gripButtonAction{ XR_NULL_HANDLE };
         XrAction m_gripAction{ XR_NULL_HANDLE };
         XrAction m_menuAction{ XR_NULL_HANDLE };
+        XrAction m_thumbstickAction{ XR_NULL_HANDLE };
+        XrAction m_thumbstickButtonAction{ XR_NULL_HANDLE };
         XrAction m_aAction{ XR_NULL_HANDLE };
         XrAction m_bAction{ XR_NULL_HANDLE };
         XrAction m_xAction{ XR_NULL_HANDLE };
@@ -368,6 +405,8 @@ namespace {
         int32_t m_rightMenuIndex{ -1 };
         int32_t m_rightAIndex{ -1 };
         int32_t m_rightBIndex{ -1 };
+        int32_t m_leftThumbstickIndex{ -1 };
+        int32_t m_rightThumbstickIndex{ -1 };
 
         xr::SpaceHandle m_unboundedSpace;
         xr::SpaceHandle m_localSpace;
